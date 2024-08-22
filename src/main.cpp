@@ -4,23 +4,33 @@
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 // IN and OUT pins
-int moisture = A0;
-int relay = 3;
-bool plantHappy;
+#define moisture A0
+#define potMeter A1
+#define relay 2
 
 // Values for moisture sensor calibration
-int wet = 440;  // Value for wet sensor
-int dry = 828;  // Value for dry sensor
+#define wet 440
+#define dry 828
 
-// Soil humidity limits in percent
+// Soil humidity and pump time limits in percent
 int minMoisture = 20;
+unsigned long pumpDuration = 3000;
+
 
 // Timing variables
-const int interval = 500;  // Update interval for sensor readings in milliseconds
+unsigned long interval = 1000;  // Update interval for sensor readings in milliseconds
 unsigned long previousMillis = 0;
-int dotCount;
+unsigned long previousPumpTime = 0;
+unsigned long pumpStartTime = 0;
+unsigned long pumpTime = 0;
+unsigned long currentPotVal = 0;
+unsigned long previousPotVal = 0;
 
-// Custom characters
+int dotCount;
+bool plantHappy;
+bool pumpRan = false;
+
+// Heart character
 byte Heart[] = {
   B00000,
   B01010,
@@ -31,7 +41,7 @@ byte Heart[] = {
   B00000,
   B00000
 };
-
+// Smiley character
 byte Smile[] = {
   0b00000,
   0b00000,
@@ -45,8 +55,12 @@ byte Smile[] = {
 
 // Setup
 void setup() {
-  // Set pin modes
+  // Serial init
+  Serial.begin(9600);
+
+  // Prepare pins
   pinMode(moisture, INPUT);
+  pinMode(potMeter, INPUT);
   pinMode(relay, OUTPUT);
   digitalWrite(relay, LOW);
 
@@ -59,39 +73,63 @@ void setup() {
 
 // Main loop
 void loop() {
-  unsigned long currentMillis = millis(); // Read current time
+  // Read current time
+  unsigned long currentMillis = millis();
+
+  // Write to LCD
   lcd.setCursor(0, 0);
-  lcd.print("Moisture: ");  // Print to screen
+  lcd.print("Moisture: ");
 
-  // Update only the numbers on the LCD using millis
+  // Read moisture and convert to percent
+  int soilVal = analogRead(moisture);
+  int percentHumidity = map(soilVal, wet, dry, 100, 0);
+
+  // Read potentiometer and set pumptime
+  currentPotVal = analogRead(potMeter);
+  long timePumped = map(currentPotVal, 0, 1023, 0, 90000);
+  //Serial.println(timePumped);
+
+
+  // Show current watering time on LCD
+  if ((currentPotVal % previousPotVal) > 50) {
+    previousPotVal = currentPotVal;
+
+    // PRINT PUMP DURATION ON SCREEN
+    lcd.setCursor(0, 1);
+    lcd.print("                 ");
+    lcd.setCursor(0, 1);
+    lcd.print("Watering: ");
+    lcd.print(timePumped/1000);
+    lcd.print("s");
+    delay(100);
+  }
+  
+  // Ensure that percentage reading is between 0 and 100
+  if (soilVal >= dry){
+    percentHumidity = 0;
+  }
+  if (soilVal <= wet){
+    percentHumidity = 100;
+  }
+
+  // Timed loop
   if (currentMillis - previousMillis >= interval) {
-    previousMillis = currentMillis;
+    currentPotVal = pumpDuration;
 
-    int soilVal = analogRead(moisture); // Read moisture
-    int percentHumidity = map(soilVal, wet, dry, 100, 0); // Convert to percent
-    
-    // Ensure that percentage reading is between 0 and 100
-    if (soilVal >= dry){
-      percentHumidity = 0;
-    }
-    if (soilVal <= wet){
-      percentHumidity = 100;
-    }
+    // Variables for dot animation and timing
+    dotCount = (dotCount + 1) % 4;
+    previousMillis = currentMillis;
 
     // Display current moisture percentage
     lcd.setCursor(10, 0);
     lcd.print("      ");
     lcd.setCursor(10, 0);
     lcd.print(percentHumidity);
-    lcd.print(" %");
-
-    // Counter for dot animation
-    dotCount = (dotCount + 1) % 4;
-
+    lcd.print("%");
+    
     // Check if watering is needed
     if (percentHumidity <= minMoisture) {
-      plantHappy = false; // Set plant status
-      digitalWrite(relay, HIGH);  // Turn on waterpump
+      plantHappy = true;
 
       // Display watering status
       lcd.setCursor(0, 1);
@@ -108,21 +146,35 @@ void loop() {
           lcd.print(" ");
         }
       }
+        
+      // Start waterpump
+      if (digitalRead(relay) == LOW and !pumpRan) {
+        digitalWrite(relay, HIGH);
+      }
+
+      // Check if pump has run for the specified time
+      if (currentMillis - pumpStartTime >= timePumped) {
+        pumpStartTime = currentMillis;
+        digitalWrite(relay, LOW);
+      }
+      else {
+        pumpRan = true;
+      }
+
     }
     else {
-      // Turn off water pump
-      digitalWrite(relay, LOW);
-
       // Update LCD when plant is happy
-      if(!plantHappy) {
+      if(plantHappy) {
         lcd.setCursor(0, 1);
-        lcd.print("                ");
+        lcd.print("                 ");
         lcd.setCursor(0, 1);
         lcd.print("Happy plant ");
         lcd.write(1);
-        plantHappy = true;
+        //plantHappy = false;
+        pumpRan = false;
+        digitalWrite(relay, LOW);
+        pumpStartTime = 0;
       }
     }
   }
 }
-
