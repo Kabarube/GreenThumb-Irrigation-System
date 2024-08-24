@@ -1,5 +1,5 @@
 # GreenThumb-Irrigation-System
-Automatic plant irrigation system for Arduino
+Automatic plant watering with Arduino
 
 #### Components
 - Arduino Uno
