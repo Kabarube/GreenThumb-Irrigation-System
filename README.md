@@ -9,4 +9,5 @@ Automatic plant watering with Arduino
 - 16x2 LCD Display ($I^2C$)
 - Relay Module
 
+
 ![Breadboard](/GreenThumb_Prototype_bb.png)
