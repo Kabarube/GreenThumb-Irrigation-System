@@ -1,5 +1,5 @@
 # GreenThumb-Irrigation-System
-Automatic plant irrigation system for Arduino
+Automatic plant watering with Arduino
 
 #### Components
 - Arduino Uno
@@ -8,5 +8,6 @@ Automatic plant irrigation system for Arduino
 - Potentiometer
 - 16x2 LCD Display ($I^2C$)
 - Relay Module
+
 
 ![Breadboard](/GreenThumb_Prototype_bb.png)
