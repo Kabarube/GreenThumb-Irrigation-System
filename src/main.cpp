@@ -28,7 +28,9 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 #define wet 440                   // Sensor value when wet
 #define dry 828                   // Sensor value when dry
 #define moistureThreshold 20      // Minimum allowed humidity in %
+#define pumpConstant 0.18         // Pump capacity constant (dl/s)
 unsigned long waterAmount = 0;    // Amount of water to be pumped
+
 
 // Delays
 #define measureFrequency 60000    // Frequency of moisture measurement in milliseconds (default 600000)
@@ -142,7 +144,7 @@ void updateDisplay() {
     if (settingsActive) {
       lcd.setCursor(0, 1);
       lcd.print("Water: ");
-      lcd.print((waterAmount/1000)*0.18, 1);
+      lcd.print((waterAmount/1000)*pumpConstant, 1);
       lcd.print(" dl ");
 
       // Hide settings menu after a set delay
